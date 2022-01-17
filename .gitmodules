@@ -1,0 +1,6 @@
+[submodule "TelegaPi"]
+	path = TelegaPi
+	url = https://github.com/ms301/TelegaPi.git
+[submodule "AirasEQueryLib"]
+	path = AirasEQueryLib
+	url = https://github.com/ms301/AirasEQueryLib.git
