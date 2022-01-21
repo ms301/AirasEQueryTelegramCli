@@ -4,8 +4,11 @@ interface
 
 uses
   Airas.EQuery.Client,
+  Airas.EQuery.Types,
+  AEQuery.TThreadTimer,
   TelegaPi,
-  TelegramBotApi.Tools.Router;
+  TelegramBotApi.Tools.Router,
+  TelegramBotApi.Tools.UserDataStorage.Json;
 
 type
   TAEQuery = class
@@ -13,8 +16,10 @@ type
     FQuery: TAirasQuery;
     FTelegram: TTelegramBotApi;
     FTgPool: TtgPollingConsole;
-    FRouteUserStates: TtgRouteUserStateManagerAbstract;
+    FRouteUserStates: TtgUserDataStorage;
     FTgRouter: TtgRouter;
+    FTimer: TThreadTimer;
+    function QueryState(AEQAuth: TeqOperatorAuth): string;
   protected
     function RouteStart: TtgRoute;
     function RouteWork: TtgRoute;
@@ -28,7 +33,7 @@ type
 implementation
 
 uses
-  Airas.EQuery.Types,
+
   TelegramBotApi.Types.AvailableMethods,
   TelegramBotApi.Types.Keyboards,
   TelegramBotApi.Types.Request,
@@ -50,21 +55,36 @@ begin
     begin
       FTgRouter.SendCallbackQuery(ACQ);
     end;
-  FRouteUserStates := TtgRouteUserStateManagerRAM.Create;
+  FRouteUserStates := TtgUserDataStorage.Create('data.json');
   FTgRouter := TtgRouter.Create(FRouteUserStates, FTelegram);
-  FTgRouter.RegisterRoute(RouteStart);
+  FTgRouter.RegisterRoutes([RouteStart, RouteWork]);
   FTgRouter.OnRouteNotFound := procedure(AUserID: Int64; ARoute: string)
     begin
-
+      Writeln(format('%d - не найден маршрут: %s', [AUserID, ARoute]));
     end;
   FTgRouter.OnRouteMove := procedure(AUserID: Int64; AFrom, ATo: TtgRoute)
     begin
       Writeln(format('%d %s %s', [AUserID, AFrom.Name, ATo.Name]));
     end;
+  FTimer := TThreadTimer.Create;
+  FTimer.Interval := 1000;
+  FTimer.Start;
+  FTimer.OnTimer := procedure
+    var
+      i: Int64;
+      lUsers: TArray<Int64>;
+      lToken: string;
+    begin
+      lUsers := FRouteUserStates.GetUsers;
+      for i in lUsers do
+        lToken := FRouteUserStates[i, 'auth'];
+
+    end;
 end;
 
 destructor TAEQuery.Destroy;
 begin
+  FTimer.Free;
   Stop;
   FTgPool.Free;
   FQuery.Free;
@@ -72,6 +92,17 @@ begin
   FRouteUserStates.Free;
   FTgRouter.Free;
   inherited;
+end;
+
+function TAEQuery.QueryState(AEQAuth: TeqOperatorAuth): string;
+var
+  Params: TeqParamEQueryOper;
+begin
+  Params := FQuery.ShowParamEqueryOper(AEQAuth);
+  Result := format('Всего: %s' + #13#10 + 'Мои: %s' + #13#10 + 'Сейчас: %s' + #13#10 + 'Следующие: %s',
+    [Params.allAllClients, Params.allClients, Params.near, Params.next]);
+  if Length(Params.Users) > 0 then
+    Result := Result + #13#10 + format('', [Params.Users[0].docstate]);
 end;
 
 function TAEQuery.RouteStart: TtgRoute;
@@ -82,14 +113,13 @@ begin
       lSendMsg: TtgSendMessageArgument;
       lUsersKb: TtgInlineKeyboardMarkup;
       lUserKbBtn: TtgInlineKeyboardButton;
-      i: Integer;
+      i: integer;
       lUsers: TArray<TeqOperator>;
     begin
       lSendMsg := TtgSendMessageArgument.Create;
       try
         lSendMsg.ChatId := AMsg.Chat.ID;
         lSendMsg.Text := '😎 Оберіть адміністратора для авторизації у електронній черзі:';
-
         lUsersKb := TtgKeyboardBuilder.InlineKb;
         lUsers := FQuery.GetOperators;
         for i := low(lUsers) to High(lUsers) do
@@ -99,7 +129,6 @@ begin
           lUserKbBtn := lUsersKb.AddButton;
           lUserKbBtn.Text := lUsers[i].Name;
           lUserKbBtn.CallbackData := lUsers[i].Login;
-
         end;
         lSendMsg.ReplyMarkup := lUsersKb;
         FTelegram.SendMessage(lSendMsg);
@@ -111,21 +140,32 @@ begin
     var
       AnswerCQ: TtgAnswerCallbackQueryArgument;
       lEQAuth: TeqOperatorAuth;
+      lDeleteMsgArg: TtgDeleteMessageArgument;
     begin
       lEQAuth := FQuery.UserCheck(ACQ.Data);
       AnswerCQ.CallbackQueryId := ACQ.ID;
-      AnswerCQ.CacheTime := 3000;
+      AnswerCQ.CacheTime := 3;
       if lEQAuth.sessionid.IsEmpty then
       begin
         AnswerCQ.Text := '⛔️Ошибка авторизации. Обратитесь к администратору';
         AnswerCQ.ShowAlert := True;
+        FTelegram.AnswerCallbackQuery(AnswerCQ);
       end
       else
       begin
-        AnswerCQ.Text := '✅ Успешно авторизовано';
-        AnswerCQ.ShowAlert := False;
+        FRouteUserStates[ACQ.From.ID, 'auth'] := lEQAuth.sessionid;
+        AnswerCQ.Text := '✅ Успешно авторизовано' + #13#10 + QueryState(lEQAuth);
+        AnswerCQ.ShowAlert := True;
+        FTelegram.AnswerCallbackQuery(AnswerCQ);
+        lDeleteMsgArg := TtgDeleteMessageArgument.Create;
+        try
+          lDeleteMsgArg.ChatId := ACQ.Message.Chat.ID;
+          lDeleteMsgArg.MessageID := ACQ.Message.MessageID;
+          // FTelegram.DeleteMessage(lDeleteMsgArg);
+        finally
+          lDeleteMsgArg.Free;
+        end;
       end;
-      FTelegram.AnswerCallbackQuery(AnswerCQ);
     end;
 end;
 
@@ -137,7 +177,7 @@ begin
       lSendMsg: TtgSendMessageArgument;
       lUsersKb: TtgInlineKeyboardMarkup;
       lUserKbBtn: TtgInlineKeyboardButton;
-      i: Integer;
+      i: integer;
       lUsers: TArray<TeqOperator>;
     begin
       lSendMsg := TtgSendMessageArgument.Create;

@@ -1,0 +1,58 @@
+﻿{
+    "FOwnerships": 0,
+    "FItems": [
+        {
+            "HashCode": -1,
+            "Key": 0,
+            "Value": null
+        },
+        {
+            "HashCode": -1,
+            "Key": 0,
+            "Value": null
+        },
+        {
+            "HashCode": 336684246,
+            "Key": 245903278,
+            "Value": {
+                "FItems": [
+                    {
+                        "HashCode": -1,
+                        "Key": "",
+                        "Value": ""
+                    },
+                    {
+                        "HashCode": 181655037,
+                        "Key": "state",
+                        "Value": "/start"
+                    },
+                    {
+                        "HashCode": 1618891809,
+                        "Key": "auth",
+                        "Value": "wur5f75e-xk64-rnoa-27bv-hwabklv4v62x"
+                    },
+                    {
+                        "HashCode": -1,
+                        "Key": "",
+                        "Value": ""
+                    }
+                ],
+                "FCount": 2,
+                "FComparer": {},
+                "FGrowThreshold": 3,
+                "FKeyCollection": null,
+                "FValueCollection": null
+            }
+        },
+        {
+            "HashCode": -1,
+            "Key": 0,
+            "Value": null
+        }
+    ],
+    "FCount": 1,
+    "FComparer": {},
+    "FGrowThreshold": 3,
+    "FKeyCollection": null,
+    "FValueCollection": null
+}

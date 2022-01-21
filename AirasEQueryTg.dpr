@@ -1,4 +1,4 @@
-program AirasEQueryTg;
+﻿program AirasEQueryTg;
 
 {$APPTYPE CONSOLE}
 {$R *.res}
@@ -6,7 +6,11 @@ program AirasEQueryTg;
 uses
   System.SysUtils,
   AEQuery.Main in 'AEQuery.Main.pas',
-  TelegramBotApi.Tools.UserDataStorage in 'TelegaPi\TelegramBotApi.Tools.UserDataStorage.pas';
+  TelegramBotApi.Tools.UserDataStorage.Abstract in 'TelegaPi\TelegramBotApi.Tools.UserDataStorage.Abstract.pas',
+  TelegramBotApi.Tools.UserDataStorage.Json in 'TelegaPi\TelegramBotApi.Tools.UserDataStorage.Json.pas',
+  TelegramBotApi.Tools.UserDataStorage.Ram in 'TelegaPi\TelegramBotApi.Tools.UserDataStorage.Ram.pas',
+  TelegramBotApi.Tools.Router in 'TelegaPi\TelegramBotApi.Tools.Router.pas',
+  AEQuery.TThreadTimer in 'AEQuery.TThreadTimer.pas';
 
 procedure Run;
 var
